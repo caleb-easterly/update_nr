@@ -1,15 +1,23 @@
 #!/bin/bash
 
+usage="Usage: $(basename "$0") -d path1 -l path2 -b path3 [-u] [-t path4]
+- a script to automate the update of NCBI's nr databases for Galaxy servers
+where:
+	-d	path to data directory
+	-l 	path to blastdb_p.loc file
+	-b	path to BLAST+ executables (ex: /opt/blast-2.6.0/bin)
+	-u	flag: check nr for updates
+	-t	timestamp file. Optional: default is ./mostRecentDates.txt" 
+
+
 # parse parameters
 
-if [[ $# -lt 6 ]]; then
-    echo "Please provide 3 arguments: -d /path/to/data/dir"\
-", -l path/to/loc_file"\
-" and -n 0 (don't download) or 1 (download)."
+if [[ $# -eq 0 ]]; then
+    echo "$usage"
     exit 1
 fi
 
-while getopts "d:n:l:" opt; do
+while getopts "d:n:l:b:t:u" opt; do
     case $opt in 
         d)
             db_path=$OPTARG
@@ -18,12 +26,8 @@ while getopts "d:n:l:" opt; do
                 exit 1
             fi
         ;;
-        n)
-            download_nr=$OPTARG
-            if [ $download_nr != 0 -a $download_nr != 1 ]; then
-                echo "invalid value for -n, must be 0 or 1"
-                exit 1
-            fi
+        u)
+            download_nr=1
         ;;
         l)
             loc_path=$OPTARG
@@ -32,7 +36,17 @@ while getopts "d:n:l:" opt; do
                 exit 1
             fi
         ;;
-        \?)
+        b)
+            blast_path=$OPTARG
+            if [ ! -d $blast_path ]; then
+                echo "blast directory does not exist"
+                exit 1
+            fi
+        ;;
+		t)
+			time_file=$OPTARG
+		;;
+		\?)
             echo "Invalid option: -$OPTARG"
             exit 1
         ;;
@@ -43,33 +57,45 @@ while getopts "d:n:l:" opt; do
     esac
 done
 
-export PATH=$PATH:/opt/galaxy/tool_dependencies/blast/2.5.0/iuc/package_blast_plus_2_5_0/5dd2b68c7d04
+export PATH=$PATH:$blast_path
 
 #============================================================#
 # Step 1: Download NR (optional) and extract human and mouse # 
 #============================================================#
 
 # for downloading, go to nr dir
-cd $db_path/nr 
+cd $db_path/nr
 
 ## # get single timestamp, before download starts
 dateMostRecentDownload=$(date +'%m_%d_%Y')
- 
+
+# default timefile
+if [ -z "$time_file" ]; then
+	echo "using ./mostRecentDates.txt as timefile"
+	time_file=$db_path/mostRecentDates.txt
+fi
+
+# warning if timefile does not yet exist
+if [ ! -e "$time_file" ]; then
+	echo "time_file does not exist; creating it"
+fi
+
 # write for later retrieval-- append to end of list
-mostRecentDatesPath=/opt/galaxy/galaxy-app/cron/mostRecentDates.txt
-echo $dateMostRecentDownload >> $mostRecentDatesPath
+echo $dateMostRecentDownload >> "$time_file"
 
 echo "Updating nr database on $dateMostRecentDownload"
 
 # run update script
 # depends on whether 'download_nr' is 0 (no) or 1 (yes)
 
-if [ $download_nr -eq 1 ]; then
-    update_blastdb.pl -passive 1 --decompress 1
+if [ ! -z $download_nr ]; then
+    update_blastdb.pl nr -passive --decompress
     echo "database updated"
 else 
     echo "skipping download"
 fi
+
+exit
 
 # make directory for most recent extractions 
 mkdir $db_path/$dateMostRecentDownload
@@ -85,11 +111,40 @@ else
     exit 1
 fi
 
+echo "extracting human and mouse sequences..."
+#extract and build human and mouse nr database
+#only one pass through whole (huge) nr database to save computation time
+blastdbcmd -db nr -entry all -outfmt "%g %T" | \
+    awk ' { if ($2 == 9606 || $2 == 10090) { print $1 } } ' | \
+    blastdbcmd -db nr -target_only -entry_batch - \
+        -out $db_path/$dateMostRecentDownload/human_mouse_nr_$dateMostRecentDownload.fasta
+
+if [ $? -eq 0 ]; then
+    echo "human and mouse sequences extracted"
+else
+    echo "human and mouse extraction failed. exiting"
+    exit 1
+fi
+
+makeblastdb \
+    -in $db_path/$dateMostRecentDownload/human_mouse_nr_$dateMostRecentDownload.fasta \
+    -out $db_path/$dateMostRecentDownload/human_mouse_nr_db_$dateMostRecentDownload \
+    -dbtype prot &&\
+    rm $db_path/$dateMostRecentDownload/human_mouse_nr_$dateMostRecentDownload.fasta
+    # if makeblastdb succeeds, remove human fasta to save space
+
+if [ $? -eq 0 ]; then
+    echo "human and mouse database built"
+else
+    echo "human and mouse database build failed. exiting"
+    exit 1
+fi
+
 echo "extracting human sequences..."
 #extract and build human nr database
-blastdbcmd -db nr -entry all -outfmt "%g %T" | \
+blastdbcmd -db human_mouse_nr_db_$dateMostRecentDownload -entry all -outfmt "%g %T" | \
     awk ' { if ($2 == 9606) { print $1 } } ' | \
-    blastdbcmd -db nr -target_only -entry_batch - \
+    blastdbcmd -db human_mouse_nr_db_$dateMostRecentDownload -target_only -entry_batch - \
         -out $db_path/$dateMostRecentDownload/human_nr_$dateMostRecentDownload.fasta
 
 if [ $? -eq 0 ]; then
@@ -117,9 +172,9 @@ fi
 
 echo "extracting mouse sequences..."
 #extract and build mouse_nr database
-blastdbcmd -db nr -entry all -outfmt "%g %T" | \
+blastdbcmd -db human_mouse_nr_db_$dateMostRecentDownload -entry all -outfmt "%g %T" | \
     awk ' { if ($2 == 10090) { print $1 } } ' | \
-    blastdbcmd -db nr -target_only -entry_batch - \
+    blastdbcmd -db human_mouse_nr_db_$dateMostRecentDownload -target_only -entry_batch - \
         -out $db_path/$dateMostRecentDownload/mouse_nr_$dateMostRecentDownload.fasta
 
 if [ $? -eq 0 ]; then
@@ -248,16 +303,16 @@ sed -i -n '1,15p' $loc_path
 #=========================================#
 #     Step 3: Update the download times   #
 #=========================================#
-nLines=$(wc -l $mostRecentDatesPath)
+nLines=$(wc -l $time_file)
 
 # if we have downloaded 4 or more databases, then delete oldest. else, do nothing
 if [ nLines -gt 3 ]: then
     # get oldest database (most recent date file is a queue, so first line)
-    oldestDB=$(head -n 1 $mostRecentDatesPath)
+    oldestDB=$(head -n 1 $time_file)
     rm -r $db_path/$oldestDB
 
-    # rewrite mostRecentDates.txt to remove oldest file
-    sed -i '1!p' $mostRecentDatesPath
+    # rewrite time_file to remove oldest date
+    sed -i '1!p' $time_file
 fi
 
 

@@ -3,11 +3,11 @@
 usage="Usage: $(basename "$0") -d path1 -l path2 -b path3 [-u] [-t path4]
 - a script to automate the update of NCBI's nr databases for Galaxy servers
 where:
-	-d	path to data directory
+-d	path to data directory (db_path)
 	-l 	path to blastdb_p.loc file
 	-b	path to BLAST+ executables (ex: /opt/blast-2.6.0/bin)
 	-u	flag: check nr for updates
-	-t	timestamp file. Optional: default is ./mostRecentDates.txt" 
+    -t	timestamp file (optional) default is db_path/mostRecentDates.txt" 
 
 
 # parse parameters
@@ -16,6 +16,7 @@ if [[ $# -eq 0 ]]; then
     echo "$usage"
     exit 1
 fi
+
 
 while getopts "d:n:l:b:t:u" opt; do
     case $opt in 
@@ -57,6 +58,22 @@ while getopts "d:n:l:b:t:u" opt; do
     esac
 done
 
+# check that mandatory parameters (d, l, b) were entered
+if [ -z "$db_path" ]; then
+    echo "must provide path to database (-d /path/to/database)"
+    exit 1
+fi
+
+if [ -z "$blast_path" ]; then
+    echo "must provide path to blast executables ( -b /path/to/blast )"
+    exit 1
+fi
+
+if [ -z "$loc_path" ]; then
+    echo "must provide loc file ( -l /path/to/loc/file )"
+    exit 1
+fi
+
 export PATH=$PATH:$blast_path
 
 #============================================================#
@@ -71,7 +88,7 @@ dateMostRecentDownload=$(date +'%m_%d_%Y')
 
 # default timefile
 if [ -z "$time_file" ]; then
-	echo "using ./mostRecentDates.txt as timefile"
+	echo "using $db_path/mostRecentDates.txt as timefile"
 	time_file=$db_path/mostRecentDates.txt
 fi
 
@@ -94,8 +111,6 @@ if [ ! -z $download_nr ]; then
 else 
     echo "skipping download"
 fi
-
-exit
 
 # make directory for most recent extractions 
 mkdir $db_path/$dateMostRecentDownload

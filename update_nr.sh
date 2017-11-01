@@ -132,7 +132,7 @@ echo "extracting human and mouse sequences..."
 blastdbcmd -db nr -entry all -outfmt "%g %T" | \
     awk ' { if ($2 == 9606 || $2 == 10090) { print $1 } } ' | \
     blastdbcmd -db nr -target_only -entry_batch - \
-        -out $db_path/$dateMostRecentDownload/human_mouse_nr_$dateMostRecentDownload.fasta
+        -out $db_path/$dateMostRecentDownload/human_mouse_nr.fasta
 
 if [ $? -eq 0 ]; then
     echo "human and mouse sequences extracted"
@@ -142,10 +142,10 @@ else
 fi
 
 makeblastdb \
-    -in $db_path/$dateMostRecentDownload/human_mouse_nr_$dateMostRecentDownload.fasta \
-    -out $db_path/$dateMostRecentDownload/human_mouse_nr_db_$dateMostRecentDownload \
+    -in $db_path/$dateMostRecentDownload/human_mouse_nr.fasta \
+    -out $db_path/$dateMostRecentDownload/human_mouse_nr_db \
     -dbtype prot &&\
-    rm $db_path/$dateMostRecentDownload/human_mouse_nr_$dateMostRecentDownload.fasta
+    rm $db_path/$dateMostRecentDownload/human_mouse_nr.fasta
     # if makeblastdb succeeds, remove human fasta to save space
 
 if [ $? -eq 0 ]; then
@@ -157,10 +157,10 @@ fi
 
 echo "extracting human sequences..."
 #extract and build human nr database
-blastdbcmd -db human_mouse_nr_db_$dateMostRecentDownload -entry all -outfmt "%g %T" | \
+blastdbcmd -db human_mouse_nr_db -entry all -outfmt "%g %T" | \
     awk ' { if ($2 == 9606) { print $1 } } ' | \
-    blastdbcmd -db human_mouse_nr_db_$dateMostRecentDownload -target_only -entry_batch - \
-        -out $db_path/$dateMostRecentDownload/human_nr_$dateMostRecentDownload.fasta
+    blastdbcmd -db human_mouse_nr_db -target_only -entry_batch - \
+        -out $db_path/$dateMostRecentDownload/human_nr.fasta
 
 if [ $? -eq 0 ]; then
     echo "human sequences extracted"
@@ -172,10 +172,10 @@ fi
 echo "building human database..."
 
 makeblastdb \
-    -in $db_path/$dateMostRecentDownload/human_nr_$dateMostRecentDownload.fasta \
-    -out $db_path/$dateMostRecentDownload/human_nr_db_$dateMostRecentDownload \
+    -in $db_path/$dateMostRecentDownload/human_nr.fasta \
+    -out $db_path/$dateMostRecentDownload/human_nr_db \
     -dbtype prot &&\
-    rm $db_path/$dateMostRecentDownload/human_nr_$dateMostRecentDownload.fasta
+    rm $db_path/$dateMostRecentDownload/human_nr.fasta
     # if makeblastdb succeeds, remove human fasta to save space
 
 if [ $? -eq 0 ]; then
@@ -187,10 +187,10 @@ fi
 
 echo "extracting mouse sequences..."
 #extract and build mouse_nr database
-blastdbcmd -db human_mouse_nr_db_$dateMostRecentDownload -entry all -outfmt "%g %T" | \
+blastdbcmd -db human_mouse_nr_db -entry all -outfmt "%g %T" | \
     awk ' { if ($2 == 10090) { print $1 } } ' | \
-    blastdbcmd -db human_mouse_nr_db_$dateMostRecentDownload -target_only -entry_batch - \
-        -out $db_path/$dateMostRecentDownload/mouse_nr_$dateMostRecentDownload.fasta
+    blastdbcmd -db human_mouse_nr_db -target_only -entry_batch - \
+        -out $db_path/$dateMostRecentDownload/mouse_nr.fasta
 
 if [ $? -eq 0 ]; then
     echo "mouse sequences extracted"
@@ -201,10 +201,10 @@ fi
 
 echo "building mouse database..."
 makeblastdb \
-    -in $db_path/$dateMostRecentDownload/mouse_nr_$dateMostRecentDownload.fasta \
-    -out $db_path/$dateMostRecentDownload/mouse_nr_db_$dateMostRecentDownload \
+    -in $db_path/$dateMostRecentDownload/mouse_nr.fasta \
+    -out $db_path/$dateMostRecentDownload/mouse_nr_db \
     -dbtype prot &&\
-    rm $db_path/$dateMostRecentDownload/mouse_nr_$dateMostRecentDownload.fasta
+    rm $db_path/$dateMostRecentDownload/mouse_nr.fasta
 
 if [ $? -eq 0 ]; then
     echo "mouse database built"
@@ -225,31 +225,31 @@ else
 fi
 
 # rename with date
-echo "renaming nr files in $db_path/$dateMostRecentDownload"
-for f in $db_path/$dateMostRecentDownload/nr.*; do mv "$f" "${f/nr/nr_$dateMostRecentDownload}"; done
-
-if [ $? -eq 0 ]; then
-    echo "nr files renamed"
-else
-    echo "rename failed. exiting"
-    exit 1
-fi
+#echo "renaming nr files in $db_path/$dateMostRecentDownload"
+#for f in $db_path/$dateMostRecentDownload/nr.*; do mv "$f" "${f/nr/nr_$dateMostRecentDownload}"; done
+#
+#if [ $? -eq 0 ]; then
+#    echo "nr files renamed"
+#else
+#    echo "rename failed. exiting"
+#    exit 1
+#fi
 
 # update index in alias file
-echo "updating index in alias file."
-sed -i "s/nr/nr_$dateMostRecentDownload/g" $db_path/$dateMostRecentDownload/nr_$dateMostRecentDownload.pal
-
-if [ $? -eq 0 ]; then
-    echo "index in alias file updated"
-else
-    echo "updating index failed. exiting"
-    exit 1
-fi
-
-if [ $? -ne 0 ]; then
-    echo "Database download and extraction failed. Exiting."
-    exit 1
-fi
+#echo "updating index in alias file."
+#sed -i "s/nr/nr_$dateMostRecentDownload/g" $db_path/$dateMostRecentDownload/nr_$dateMostRecentDownload.pal
+#
+#if [ $? -eq 0 ]; then
+#    echo "index in alias file updated"
+#else
+#    echo "updating index failed. exiting"
+#    exit 1
+#fi
+#
+#if [ $? -ne 0 ]; then
+#    echo "Database download and extraction failed. Exiting."
+#    exit 1
+#fi
 
 #=========================================#
 #     Step 2: Update the .loc file        #
@@ -273,9 +273,9 @@ fi
 #14 nr_human_9
 #15 nr_mouse_9
 
-h_id=human_nr_db_$dateMostRecentDownload
-m_id=mouse_nr_db_$dateMostRecentDownload
-nr_id=nr_$dateMostRecentDownload
+h_id=human_nr_db
+m_id=mouse_nr_db
+nr_id=nr
 
 # the only db path we're working with is dir with most recent
 most_recent_path=$db_path/$dateMostRecentDownload
@@ -290,7 +290,6 @@ nr_line=nr_$dateMostRecentDownload"\t"nr_$dateMostRecentDownload"\t"$most_recent
 # when setting up automatic database updating, first clean blastdb_p.loc file
 # remove any lines that start with #
 sed -i 's/^#.*$//g' $loc_path
-
 
 # count number of lines in current loc file
 nLines=$(wc -l $loc_path | awk '{print $1 }')
@@ -329,6 +328,3 @@ if [ nLines -gt 3 ]: then
     # rewrite time_file to remove oldest date
     sed -i '1!p' $time_file
 fi
-
-
-

@@ -3,11 +3,11 @@
 usage="Usage: $(basename "$0") -d path1 -l path2 -b path3 [-u] [-t path4]
 - a script to automate the update of NCBI's nr databases for Galaxy servers
 where:
--d	path to data directory (db_path)
+        -d      path to data directory (db_path)
 	-l 	path to blastdb_p.loc file
 	-b	path to BLAST+ executables (ex: /opt/blast-2.6.0/bin)
 	-u	flag: check nr for updates
-    -t	timestamp file (optional) default is db_path/mostRecentDates.txt" 
+	-t	timestamp file (optional) default is db_path/mostRecentDates.txt" 
 
 
 # parse parameters

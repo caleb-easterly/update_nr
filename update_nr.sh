@@ -155,6 +155,9 @@ else
     exit 1
 fi
 
+# cd to current database directory, so blastdbcmd can locate the database
+cd $db_path/$dateMostRecentDownload
+
 echo "extracting human sequences..."
 #extract and build human nr database
 blastdbcmd -db human_mouse_nr_db -entry all -outfmt "%g %T" | \
